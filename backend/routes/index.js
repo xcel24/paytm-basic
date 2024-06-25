@@ -5,6 +5,7 @@ const { JWT_SECRET } = require('../config');
 
 const User = require('../models/User');
 const authMiddleWare = require('../middleware');
+const Account = require('../models/Account');
 
 const router = express.Router();
 
@@ -53,6 +54,11 @@ router.post('/signup', async (req, res) => {
   });
 
   const userId = newUser._id;
+
+  await Account.create({
+    userId,
+    balance: 1 + Math.random() * 10000,
+  });
 
   const token = jwt.sign({ userId }, JWT_SECRET);
 
@@ -103,6 +109,32 @@ router.put('/user', authMiddleWare, async (req, res) => {
 });
 
 //route to get the users based on query params
-router.get('/user/bulk', authMiddleWare, async (req, res) => {});
+router.get('/user/bulk', authMiddleWare, async (req, res) => {
+  const filter = req.query.filter || '';
+
+  const users = await User.find({
+    $or: [
+      {
+        firstName: {
+          $regex: filter,
+        },
+      },
+      {
+        lastName: {
+          $regex: filter,
+        },
+      },
+    ],
+  });
+
+  res.status(200).json({
+    user: users.map((user) => ({
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      _id: user._id,
+    })),
+  });
+});
 
 module.exports = router;
